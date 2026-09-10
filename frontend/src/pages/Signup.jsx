@@ -58,32 +58,49 @@ const Signup = () => {
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', padding: '2rem 0' }}>
-      <Card glass={true} style={{ width: '100%', maxWidth: '500px' }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '0.5rem' }}>Create an Account</h2>
-        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: 'var(--spacing-lg)', fontSize: '0.875rem' }}>Join the rating platform today.</p>
-        
+    <div style={{ 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      minHeight: '100vh', 
+      backgroundColor: 'var(--bg-main)',
+      padding: '2rem 0'
+    }}>
+      <Card style={{ width: '100%', maxWidth: '480px', padding: '2.5rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 700 }}>Create Your Account</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem' }}>Join the Store Rating Platform</p>
+        </div>
+
         {error && (
-          <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', fontSize: '0.875rem', textAlign: 'center' }}>
+          <div style={{ backgroundColor: '#fef2f2', color: '#dc2626', padding: '0.65rem', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', fontSize: '0.85rem', textAlign: 'center' }}>
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
           <Input 
-            label="Full Name (20-60 characters)" 
+            label="Name" 
             name="name" 
-            placeholder="John Doe..."
+            placeholder="Enter your full name"
             value={formData.name}
             onChange={handleChange}
             required 
           />
           <Input 
-            label="Email Address" 
+            label="Email" 
             name="email" 
             type="email" 
-            placeholder="you@example.com"
+            placeholder="Enter your email"
             value={formData.email}
+            onChange={handleChange}
+            required 
+          />
+          <Input 
+            label="Address" 
+            name="address" 
+            placeholder="Enter your address"
+            value={formData.address}
             onChange={handleChange}
             required 
           />
@@ -91,27 +108,19 @@ const Signup = () => {
             label="Password" 
             name="password" 
             type="password" 
-            placeholder="Min 8 chars, 1 Uppercase, 1 Special"
+            placeholder="Create a password"
             value={formData.password}
             onChange={handleChange}
             required 
           />
-          <Input 
-            label="Address" 
-            name="address" 
-            placeholder="123 Main St, City, Country"
-            value={formData.address}
-            onChange={handleChange}
-            required 
-          />
           
-          <Button type="submit" fullWidth disabled={loading} style={{ marginTop: '1rem' }}>
+          <Button type="submit" fullWidth disabled={loading} style={{ marginTop: '0.5rem' }}>
             {loading ? 'Creating Account...' : 'Sign Up'}
           </Button>
         </form>
         
         <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-          Already have an account? <Link to="/login" style={{ color: 'var(--accent-primary)' }}>Sign in here</Link>
+          Already have an account? <Link to="/login">Login</Link>
         </p>
       </Card>
     </div>

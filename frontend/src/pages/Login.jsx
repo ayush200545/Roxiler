@@ -4,6 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
+import { Store } from 'lucide-react';
 
 const Login = () => {
   const { login } = useContext(AuthContext);
@@ -33,22 +34,38 @@ const Login = () => {
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
-      <Card glass={true} className="login-card" style={{ width: '100%', maxWidth: '400px' }}>
-        <h2 style={{ textAlign: 'center', marginBottom: 'var(--spacing-lg)' }}>Welcome Back</h2>
-        
+    <div style={{ 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      minHeight: '100vh', 
+      backgroundColor: 'var(--bg-main)'
+    }}>
+      <Card style={{ width: '100%', maxWidth: '420px', padding: '2.5rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <div style={{
+            width: '56px', height: '56px', borderRadius: 'var(--radius-lg)',
+            backgroundColor: '#eff6ff', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', margin: '0 auto 1rem'
+          }}>
+            <Store size={28} color="var(--accent-primary)" />
+          </div>
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 700 }}>Store Rating Platform</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem' }}>Sign in to your account.</p>
+        </div>
+
         {error && (
-          <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', fontSize: '0.875rem', textAlign: 'center' }}>
+          <div style={{ backgroundColor: '#fef2f2', color: '#dc2626', padding: '0.65rem', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', fontSize: '0.85rem', textAlign: 'center' }}>
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
           <Input 
-            label="Email Address" 
+            label="Email" 
             name="email" 
             type="email" 
-            placeholder="you@example.com"
+            placeholder="Enter your email"
             value={formData.email}
             onChange={handleChange}
             required 
@@ -57,20 +74,25 @@ const Login = () => {
             label="Password" 
             name="password" 
             type="password" 
-            placeholder="••••••••"
+            placeholder="Enter your password"
             value={formData.password}
             onChange={handleChange}
             required 
           />
           
-          <Button type="submit" fullWidth disabled={loading} style={{ marginTop: '1rem' }}>
-            {loading ? 'Signing in...' : 'Sign In'}
+          <Button type="submit" fullWidth disabled={loading} style={{ marginTop: '0.5rem' }}>
+            {loading ? 'Signing in...' : 'Login'}
           </Button>
         </form>
         
         <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-          Don't have an account? <Link to="/signup" style={{ color: 'var(--accent-primary)' }}>Sign up here</Link>
+          Don't have an account? <Link to="/signup">Sign up</Link>
         </p>
+
+        <div style={{ textAlign: 'center', marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+          <p style={{ fontWeight: 600, fontSize: '0.95rem' }}>Discover. Rate. Support.</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Real reviews. Real people. Better choices.</p>
+        </div>
       </Card>
     </div>
   );
