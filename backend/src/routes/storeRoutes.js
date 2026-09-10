@@ -4,15 +4,9 @@ const { getAllStores, submitOrUpdateRating } = require('../controllers/storeCont
 
 const router = express.Router();
 
-// Apply auth middleware to all store routes
 router.use(verifyToken);
-// Normal Users and Admins can view stores (though admins have their own dashboard route, it's safe to allow here)
-router.use(requireRole(['NORMAL_USER', 'ADMIN']));
 
-// Fetch stores and search
-router.get('/', getAllStores);
-
-// Rate a store
-router.post('/:id/rate', submitOrUpdateRating);
+router.get('/', requireRole(['NORMAL_USER']), getAllStores);
+router.post('/:id/rate', requireRole(['NORMAL_USER']), submitOrUpdateRating);
 
 module.exports = router;

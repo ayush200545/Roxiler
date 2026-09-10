@@ -3,29 +3,32 @@ import api from '../../utils/api';
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
-import { Plus, Search, ArrowUpDown, Edit, Eye } from 'lucide-react';
-import './ManageStores.css'; // reuse same table styles
+import { Plus, Search, ArrowUpDown, Eye, X } from 'lucide-react';
+import './ManageStores.css';
 
 const ManageUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
+  const [filters, setFilters] = useState({ name: '', email: '', address: '', role: '' });
+  const [appliedFilters, setAppliedFilters] = useState({ name: '', email: '', address: '', role: '' });
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', address: '', role: 'NORMAL_USER' });
   const [formError, setFormError] = useState('');
 
   useEffect(() => {
     fetchUsers();
-  }, [sortBy, sortOrder, roleFilter]);
+  }, [sortBy, sortOrder, appliedFilters]);
 
   const fetchUsers = async () => {
     try {
       const params = { sortBy, order: sortOrder };
-      if (searchQuery) params.name = searchQuery;
-      if (roleFilter) params.role = roleFilter;
+      if (appliedFilters.name) params.name = appliedFilters.name;
+      if (appliedFilters.email) params.email = appliedFilters.email;
+      if (appliedFilters.address) params.address = appliedFilters.address;
+      if (appliedFilters.role) params.role = appliedFilters.role;
 
       const res = await api.get('/admin/users', { params });
       setUsers(res.data);
@@ -38,7 +41,7 @@ const ManageUsers = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    fetchUsers();
+    setAppliedFilters({ ...filters });
   };
 
   const toggleSort = (field) => {
@@ -64,7 +67,6 @@ const ManageUsers = () => {
     e.preventDefault();
     setFormError('');
 
-    // Basic frontend validation matching the requirements
     if (newUser.name.length < 20 || newUser.name.length > 60) {
       setFormError('Name must be between 20 and 60 characters.');
       return;
@@ -99,30 +101,43 @@ const ManageUsers = () => {
       </div>
 
       <Card>
-        <div className="table-controls">
-          <form onSubmit={handleSearch} className="search-box">
+        <form onSubmit={handleSearch} className="filters-grid">
+          <div className="filter-field">
             <Search size={16} className="search-icon" />
             <input
               type="text"
-              placeholder="Search by name, email or address..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Filter by name"
+              value={filters.name}
+              onChange={(e) => setFilters({ ...filters, name: e.target.value })}
               className="search-input"
             />
-          </form>
-          <div className="sort-controls">
-            <select 
-              value={roleFilter} 
-              onChange={(e) => setRoleFilter(e.target.value)}
-              style={{ padding: '0.4rem 0.6rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '0.8rem', backgroundColor: 'white' }}
-            >
-              <option value="">All Roles</option>
-              <option value="ADMIN">Admin</option>
-              <option value="NORMAL_USER">Normal User</option>
-              <option value="STORE_OWNER">Store Owner</option>
-            </select>
           </div>
-        </div>
+          <input
+            type="text"
+            placeholder="Filter by email"
+            value={filters.email}
+            onChange={(e) => setFilters({ ...filters, email: e.target.value })}
+            className="filter-input"
+          />
+          <input
+            type="text"
+            placeholder="Filter by address"
+            value={filters.address}
+            onChange={(e) => setFilters({ ...filters, address: e.target.value })}
+            className="filter-input"
+          />
+          <select
+            value={filters.role}
+            onChange={(e) => setFilters({ ...filters, role: e.target.value })}
+            className="filter-input"
+          >
+            <option value="">All Roles</option>
+            <option value="ADMIN">Admin</option>
+            <option value="NORMAL_USER">Normal User</option>
+            <option value="STORE_OWNER">Store Owner</option>
+          </select>
+          <Button type="submit">Apply</Button>
+        </form>
 
         {loading ? (
           <p className="table-message">Loading users...</p>
@@ -135,9 +150,9 @@ const ManageUsers = () => {
                 <th>#</th>
                 <th onClick={() => toggleSort('name')} className="sortable">Name <ArrowUpDown size={14} /></th>
                 <th onClick={() => toggleSort('email')} className="sortable">Email <ArrowUpDown size={14} /></th>
-                <th>Address</th>
-                <th>Role</th>
-                <th>Rating</th>
+                <th onClick={() => toggleSort('address')} className="sortable">Address <ArrowUpDown size={14} /></th>
+                <th onClick={() => toggleSort('role')} className="sortable">Role <ArrowUpDown size={14} /></th>
+                <th onClick={() => toggleSort('storeRating')} className="sortable">Rating <ArrowUpDown size={14} /></th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -150,13 +165,14 @@ const ManageUsers = () => {
                   <td>{u.address}</td>
                   <td>{getRoleBadge(u.role)}</td>
                   <td>
-                    {u.role === 'STORE_OWNER' && u.storeRating 
-                      ? <span className="rating-badge">⭐ {u.storeRating}</span> 
+                    {u.role === 'STORE_OWNER' && u.storeRating
+                      ? <span className="rating-badge">⭐ {u.storeRating}</span>
                       : '—'}
                   </td>
                   <td>
-                    <button className="action-btn" title="View"><Eye size={16} /></button>
-                    <button className="action-btn" title="Edit"><Edit size={16} /></button>
+                    <button className="action-btn" title="View details" onClick={() => setSelectedUser(u)}>
+                      <Eye size={16} />
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -165,7 +181,6 @@ const ManageUsers = () => {
         )}
       </Card>
 
-      {/* Add User Modal */}
       {showAddModal && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -189,10 +204,60 @@ const ManageUsers = () => {
                 </select>
               </div>
               <div className="modal-actions">
-                <Button variant="secondary" onClick={() => setShowAddModal(false)}>Cancel</Button>
+                <Button variant="secondary" type="button" onClick={() => setShowAddModal(false)}>Cancel</Button>
                 <Button type="submit">Create User</Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {selectedUser && (
+        <div className="modal-overlay" onClick={() => setSelectedUser(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>User Details</h2>
+              <button className="action-btn" onClick={() => setSelectedUser(null)} title="Close">
+                <X size={18} />
+              </button>
+            </div>
+            <dl className="detail-list">
+              <div>
+                <dt>Name</dt>
+                <dd>{selectedUser.name}</dd>
+              </div>
+              <div>
+                <dt>Email</dt>
+                <dd>{selectedUser.email}</dd>
+              </div>
+              <div>
+                <dt>Address</dt>
+                <dd>{selectedUser.address}</dd>
+              </div>
+              <div>
+                <dt>Role</dt>
+                <dd>{getRoleBadge(selectedUser.role)}</dd>
+              </div>
+              {selectedUser.role === 'STORE_OWNER' && (
+                <>
+                  <div>
+                    <dt>Store</dt>
+                    <dd>{selectedUser.storeName || 'No store assigned'}</dd>
+                  </div>
+                  <div>
+                    <dt>Store Rating</dt>
+                    <dd>
+                      {selectedUser.storeRating
+                        ? <span className="rating-badge">⭐ {selectedUser.storeRating}</span>
+                        : 'No ratings yet'}
+                    </dd>
+                  </div>
+                </>
+              )}
+            </dl>
+            <div className="modal-actions">
+              <Button type="button" onClick={() => setSelectedUser(null)}>Close</Button>
+            </div>
           </div>
         </div>
       )}

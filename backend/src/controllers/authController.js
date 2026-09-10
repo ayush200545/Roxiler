@@ -1,34 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/db');
-
-// --- Helper Functions for Validation ---
-const isValidEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
-const isValidPassword = (password) => {
-  // 8-16 characters, at least 1 uppercase, at least 1 special character
-  const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,16}$/;
-  return passwordRegex.test(password);
-};
-
-const validateUserData = (name, email, password, address) => {
-  if (!name || name.length < 20 || name.length > 60) {
-    return 'Name must be between 20 and 60 characters long.';
-  }
-  if (!email || !isValidEmail(email)) {
-    return 'Please provide a valid email address.';
-  }
-  if (!password || !isValidPassword(password)) {
-    return 'Password must be 8-16 characters, include at least one uppercase letter and one special character.';
-  }
-  if (!address || address.length > 400) {
-    return 'Address is required and must be less than 400 characters.';
-  }
-  return null; // Valid
-};
+const { validateUserData, isValidPassword } = require('../utils/validation');
 
 // --- Controllers ---
 

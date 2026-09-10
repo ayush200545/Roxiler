@@ -2,26 +2,40 @@ import React, { useState, useEffect, useContext } from 'react';
 import api from '../../utils/api';
 import { AuthContext } from '../../context/AuthContext';
 import Card from '../../components/ui/Card';
-import { Star, Users, Store } from 'lucide-react';
+import { Star, Store, ArrowUpDown } from 'lucide-react';
 import './OwnerDashboard.css';
+import '../dashboards/ManageStores.css';
 
 const OwnerDashboard = () => {
   const { user } = useContext(AuthContext);
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState('date');
+  const [sortOrder, setSortOrder] = useState('desc');
 
   useEffect(() => {
     fetchDashboard();
-  }, []);
+  }, [sortBy, sortOrder]);
 
   const fetchDashboard = async () => {
     try {
-      const res = await api.get('/owner/dashboard');
+      const res = await api.get('/owner/dashboard', {
+        params: { sortBy, order: sortOrder }
+      });
       setDashboardData(res.data);
     } catch (err) {
       console.error('Error loading owner dashboard:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder(field === 'date' ? 'desc' : 'asc');
     }
   };
 
@@ -74,15 +88,15 @@ const OwnerDashboard = () => {
             <thead>
               <tr>
                 <th>#</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Rating</th>
-                <th>Date</th>
+                <th onClick={() => toggleSort('name')} className="sortable">Name <ArrowUpDown size={14} /></th>
+                <th onClick={() => toggleSort('email')} className="sortable">Email <ArrowUpDown size={14} /></th>
+                <th onClick={() => toggleSort('ratingValue')} className="sortable">Rating <ArrowUpDown size={14} /></th>
+                <th onClick={() => toggleSort('date')} className="sortable">Date <ArrowUpDown size={14} /></th>
               </tr>
             </thead>
             <tbody>
               {dashboardData.ratedUsers.map((r, idx) => (
-                <tr key={idx}>
+                <tr key={`${r.email}-${idx}`}>
                   <td>{idx + 1}</td>
                   <td className="cell-name">{r.name}</td>
                   <td>{r.email}</td>

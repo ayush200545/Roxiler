@@ -1,22 +1,26 @@
 const prisma = require('../config/db');
-
-// --- Normal User Endpoints ---
+const { textContains, sortDirection, compareValues } = require('../utils/validation');
 
 const getAllStores = async (req, res) => {
   try {
-    const { name, address, sortBy, order } = req.query;
-    const userId = req.user.id; // from authMiddleware
+    const { name, address, q, sortBy, order } = req.query;
+    const userId = req.user.id;
 
     const where = {};
-    if (name) where.name = { contains: name, mode: 'insensitive' };
-    if (address) where.address = { contains: address, mode: 'insensitive' };
-
-    const orderBy = {};
-    if (sortBy && ['name', 'email'].includes(sortBy)) {
-      orderBy[sortBy] = order === 'desc' ? 'desc' : 'asc';
+    if (q) {
+      where.OR = [
+        { name: textContains(q) },
+        { address: textContains(q) }
+      ];
     } else {
-      orderBy.createdAt = 'desc';
+      if (name) where.name = textContains(name);
+      if (address) where.address = textContains(address);
     }
+
+    const dbSortFields = ['name', 'address'];
+    const orderBy = dbSortFields.includes(sortBy)
+      ? { [sortBy]: sortDirection(order) }
+      : { createdAt: 'desc' };
 
     const stores = await prisma.store.findMany({
       where,
@@ -33,8 +37,7 @@ const getAllStores = async (req, res) => {
       if (store.ratings.length > 0) {
         const total = store.ratings.reduce((acc, curr) => acc + curr.value, 0);
         overallRating = (total / store.ratings.length).toFixed(1);
-        
-        // Find if the current user has rated this store
+
         const existingRating = store.ratings.find(r => r.userId === userId);
         if (existingRating) {
           userRating = existingRating.value;
@@ -46,9 +49,15 @@ const getAllStores = async (req, res) => {
         name: store.name,
         address: store.address,
         overallRating,
-        userRating // User's submitted rating, if any
+        userRating
       };
     });
+
+    if (sortBy === 'rating' || sortBy === 'overallRating') {
+      formattedStores.sort((a, b) =>
+        compareValues(Number(a.overallRating), Number(b.overallRating), sortDirection(order))
+      );
+    }
 
     res.status(200).json(formattedStores);
   } catch (error) {
@@ -62,8 +71,9 @@ const submitOrUpdateRating = async (req, res) => {
     const storeId = parseInt(req.params.id);
     const userId = req.user.id;
     const { value } = req.body;
+    const ratingValue = Number(value);
 
-    if (!value || value < 1 || value > 5) {
+    if (!Number.isInteger(ratingValue) || ratingValue < 1 || ratingValue > 5) {
       return res.status(400).json({ message: 'Rating value must be between 1 and 5' });
     }
 
@@ -72,7 +82,6 @@ const submitOrUpdateRating = async (req, res) => {
       return res.status(404).json({ message: 'Store not found' });
     }
 
-    // Check if user already rated this store
     const existingRating = await prisma.rating.findUnique({
       where: {
         userId_storeId: {
@@ -84,23 +93,21 @@ const submitOrUpdateRating = async (req, res) => {
 
     let rating;
     if (existingRating) {
-      // Modify rating
       rating = await prisma.rating.update({
         where: { id: existingRating.id },
-        data: { value }
+        data: { value: ratingValue }
       });
       return res.status(200).json({ message: 'Rating updated successfully', rating });
-    } else {
-      // Create new rating
-      rating = await prisma.rating.create({
-        data: {
-          value,
-          userId,
-          storeId
-        }
-      });
-      return res.status(201).json({ message: 'Rating submitted successfully', rating });
     }
+
+    rating = await prisma.rating.create({
+      data: {
+        value: ratingValue,
+        userId,
+        storeId
+      }
+    });
+    return res.status(201).json({ message: 'Rating submitted successfully', rating });
   } catch (error) {
     console.error('Error submitting rating:', error);
     res.status(500).json({ message: 'Error submitting rating' });

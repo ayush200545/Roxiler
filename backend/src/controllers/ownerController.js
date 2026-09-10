@@ -1,10 +1,11 @@
 const prisma = require('../config/db');
+const { sortDirection, compareValues } = require('../utils/validation');
 
 const getOwnerDashboard = async (req, res) => {
   try {
-    const ownerId = req.user.id; // From auth middleware
+    const ownerId = req.user.id;
+    const { sortBy, order } = req.query;
 
-    // Fetch the store belonging to this owner, including the ratings and the users who made them
     const store = await prisma.store.findUnique({
       where: { ownerId },
       include: {
@@ -13,7 +14,8 @@ const getOwnerDashboard = async (req, res) => {
             user: {
               select: {
                 name: true,
-                email: true
+                email: true,
+                address: true
               }
             }
           },
@@ -35,9 +37,23 @@ const getOwnerDashboard = async (req, res) => {
     const ratedUsers = store.ratings.map(rating => ({
       name: rating.user.name,
       email: rating.user.email,
+      address: rating.user.address,
       ratingValue: rating.value,
       date: rating.createdAt
     }));
+
+    const sortableFields = {
+      name: (row) => row.name,
+      email: (row) => row.email,
+      ratingValue: (row) => row.ratingValue,
+      rating: (row) => row.ratingValue,
+      date: (row) => new Date(row.date).getTime()
+    };
+
+    if (sortBy && sortableFields[sortBy]) {
+      const getter = sortableFields[sortBy];
+      ratedUsers.sort((a, b) => compareValues(getter(a), getter(b), sortDirection(order)));
+    }
 
     res.status(200).json({
       storeName: store.name,

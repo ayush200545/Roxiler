@@ -2,7 +2,6 @@ import React, { useState, useEffect, useContext } from 'react';
 import api from '../../utils/api';
 import { AuthContext } from '../../context/AuthContext';
 import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
 import { Search, Star, MapPin } from 'lucide-react';
 import './UserDashboard.css';
 
@@ -11,17 +10,18 @@ const UserDashboard = () => {
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [sortBy, setSortBy] = useState('name');
+  const [sortOrder, setSortOrder] = useState('asc');
 
   useEffect(() => {
     fetchStores();
-  }, [sortBy]);
+  }, [sortBy, sortOrder, appliedSearch]);
 
   const fetchStores = async () => {
     try {
-      const params = {};
-      if (searchQuery) params.name = searchQuery;
-      if (sortBy) { params.sortBy = sortBy; params.order = 'desc'; }
+      const params = { sortBy, order: sortOrder };
+      if (appliedSearch) params.q = appliedSearch;
 
       const res = await api.get('/stores', { params });
       setStores(res.data);
@@ -34,13 +34,13 @@ const UserDashboard = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    fetchStores();
+    setAppliedSearch(searchQuery.trim());
   };
 
   const submitRating = async (storeId, value) => {
     try {
       await api.post(`/stores/${storeId}/rate`, { value });
-      fetchStores(); // refresh to show updated ratings
+      fetchStores();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to submit rating');
     }
@@ -73,7 +73,7 @@ const UserDashboard = () => {
       </div>
 
       <div className="search-sort-bar">
-        <form onSubmit={handleSearch} className="search-box" style={{ maxWidth: '400px' }}>
+        <form onSubmit={handleSearch} className="search-box" style={{ maxWidth: '420px' }}>
           <Search size={16} className="search-icon" />
           <input
             type="text"
@@ -83,14 +83,25 @@ const UserDashboard = () => {
             className="search-input"
           />
         </form>
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          style={{ padding: '0.4rem 0.6rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: '0.8rem', backgroundColor: 'white' }}
-        >
-          <option value="">Sort by Rating</option>
-          <option value="name">Sort by Name</option>
-        </select>
+        <div className="sort-controls">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="filter-input"
+          >
+            <option value="name">Sort by Name</option>
+            <option value="address">Sort by Address</option>
+            <option value="rating">Sort by Rating</option>
+          </select>
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            className="filter-input"
+          >
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </select>
+        </div>
       </div>
 
       {loading ? (
@@ -116,9 +127,7 @@ const UserDashboard = () => {
                   {renderStars(store)}
                 </div>
                 {store.userRating ? (
-                  <Button variant="secondary" onClick={() => submitRating(store.id, store.userRating)} style={{ fontSize: '0.75rem' }}>
-                    Modify Rating
-                  </Button>
+                  <span className="not-rated-text">Click a star to modify your rating</span>
                 ) : (
                   <span className="not-rated-text">Click a star to rate</span>
                 )}

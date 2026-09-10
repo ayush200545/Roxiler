@@ -1,8 +1,12 @@
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/db');
-
-// --- Helper Functions ---
-const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const {
+  validateUserData,
+  validateStoreData,
+  textContains,
+  sortDirection,
+  compareValues
+} = require('../utils/validation');
 
 const getDashboardStats = async (req, res) => {
   try {
@@ -25,12 +29,9 @@ const addUser = async (req, res) => {
   try {
     const { name, email, password, address, role } = req.body;
 
-    if (!name || !email || !password || !address || !role) {
-      return res.status(400).json({ message: 'All fields are required' });
-    }
-
-    if (!isValidEmail(email)) {
-      return res.status(400).json({ message: 'Invalid email address' });
+    const validationError = validateUserData(name, email, password, address, { role });
+    if (validationError) {
+      return res.status(400).json({ message: validationError });
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -48,6 +49,13 @@ const addUser = async (req, res) => {
         password: hashedPassword,
         address,
         role
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        address: true,
+        role: true
       }
     });
 
@@ -62,13 +70,24 @@ const addStore = async (req, res) => {
   try {
     const { name, email, address, ownerId } = req.body;
 
-    if (!name || !email || !address || !ownerId) {
-      return res.status(400).json({ message: 'All fields are required' });
+    const validationError = validateStoreData(name, email, address);
+    if (validationError) {
+      return res.status(400).json({ message: validationError });
     }
 
-    const owner = await prisma.user.findUnique({ where: { id: ownerId } });
+    const parsedOwnerId = parseInt(ownerId, 10);
+    if (!parsedOwnerId) {
+      return res.status(400).json({ message: 'A store owner is required' });
+    }
+
+    const owner = await prisma.user.findUnique({ where: { id: parsedOwnerId } });
     if (!owner || owner.role !== 'STORE_OWNER') {
       return res.status(400).json({ message: 'Invalid owner ID or user is not a STORE_OWNER' });
+    }
+
+    const existingStore = await prisma.store.findUnique({ where: { ownerId: parsedOwnerId } });
+    if (existingStore) {
+      return res.status(400).json({ message: 'This store owner already has a store assigned' });
     }
 
     const newStore = await prisma.store.create({
@@ -76,7 +95,7 @@ const addStore = async (req, res) => {
         name,
         email,
         address,
-        ownerId
+        ownerId: parsedOwnerId
       }
     });
 
@@ -92,17 +111,15 @@ const getUsers = async (req, res) => {
     const { name, email, address, role, sortBy, order } = req.query;
 
     const where = {};
-    if (name) where.name = { contains: name, mode: 'insensitive' };
-    if (email) where.email = { contains: email, mode: 'insensitive' };
-    if (address) where.address = { contains: address, mode: 'insensitive' };
+    if (name) where.name = textContains(name);
+    if (email) where.email = textContains(email);
+    if (address) where.address = textContains(address);
     if (role) where.role = role;
 
-    const orderBy = {};
-    if (sortBy && ['name', 'email'].includes(sortBy)) {
-      orderBy[sortBy] = order === 'desc' ? 'desc' : 'asc';
-    } else {
-      orderBy.createdAt = 'desc';
-    }
+    const dbSortFields = ['name', 'email', 'address', 'role'];
+    const orderBy = dbSortFields.includes(sortBy)
+      ? { [sortBy]: sortDirection(order) }
+      : { createdAt: 'desc' };
 
     const users = await prisma.user.findMany({
       where,
@@ -115,13 +132,13 @@ const getUsers = async (req, res) => {
         role: true,
         store: {
           select: {
+            name: true,
             ratings: { select: { value: true } }
           }
         }
       }
     });
 
-    // Calculate average store rating for store owners
     const formattedUsers = users.map(user => {
       let storeRating = null;
       if (user.role === 'STORE_OWNER' && user.store && user.store.ratings.length > 0) {
@@ -129,8 +146,22 @@ const getUsers = async (req, res) => {
         storeRating = (total / user.store.ratings.length).toFixed(1);
       }
       const { store, ...userData } = user;
-      return { ...userData, storeRating };
+      return {
+        ...userData,
+        storeName: store?.name || null,
+        storeRating
+      };
     });
+
+    if (sortBy === 'storeRating' || sortBy === 'rating') {
+      formattedUsers.sort((a, b) =>
+        compareValues(
+          a.storeRating == null ? null : Number(a.storeRating),
+          b.storeRating == null ? null : Number(b.storeRating),
+          sortDirection(order)
+        )
+      );
+    }
 
     res.status(200).json(formattedUsers);
   } catch (error) {
@@ -141,24 +172,26 @@ const getUsers = async (req, res) => {
 
 const getStores = async (req, res) => {
   try {
-    const { name, address, sortBy, order } = req.query;
+    const { name, email, address, sortBy, order } = req.query;
 
     const where = {};
-    if (name) where.name = { contains: name, mode: 'insensitive' };
-    if (address) where.address = { contains: address, mode: 'insensitive' };
+    if (name) where.name = textContains(name);
+    if (email) where.email = textContains(email);
+    if (address) where.address = textContains(address);
 
-    const orderBy = {};
-    if (sortBy && ['name', 'email'].includes(sortBy)) {
-      orderBy[sortBy] = order === 'desc' ? 'desc' : 'asc';
-    } else {
-      orderBy.createdAt = 'desc';
-    }
+    const dbSortFields = ['name', 'email', 'address'];
+    const orderBy = dbSortFields.includes(sortBy)
+      ? { [sortBy]: sortDirection(order) }
+      : { createdAt: 'desc' };
 
     const stores = await prisma.store.findMany({
       where,
       orderBy,
       include: {
-        ratings: true
+        ratings: true,
+        owner: {
+          select: { id: true, name: true, email: true }
+        }
       }
     });
 
@@ -173,9 +206,17 @@ const getStores = async (req, res) => {
         name: store.name,
         email: store.email,
         address: store.address,
+        ownerId: store.ownerId,
+        ownerName: store.owner?.name || null,
         overallRating
       };
     });
+
+    if (sortBy === 'rating' || sortBy === 'overallRating') {
+      formattedStores.sort((a, b) =>
+        compareValues(Number(a.overallRating), Number(b.overallRating), sortDirection(order))
+      );
+    }
 
     res.status(200).json(formattedStores);
   } catch (error) {
